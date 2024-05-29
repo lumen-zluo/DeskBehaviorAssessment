@@ -5,7 +5,7 @@ from ultralytics import YOLO
 if __name__ == '__main__':
     cap = cv2.VideoCapture(r"E:\data\subject4\pupil\143035.mp4")
 
-    model_path = '../model/yolov8x.pt'
+    model_path = '../model/test.pt'
 
     model = YOLO(model_path)
 
