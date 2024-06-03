@@ -66,6 +66,7 @@ def decode_json(json_floder_path, json_name):
             bb = (x1, y1, x2, y2)
             bbox = convert((img_w, img_h), bb)
             txt_file.write(str(name2id[label_name]) + " " + " ".join([str(a) for a in bbox]) + '\n')
+
     txt_file.close()
 
 
