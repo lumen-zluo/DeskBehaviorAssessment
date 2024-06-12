@@ -116,9 +116,9 @@ class Dataset:
 
 if __name__ == "__main__":
     # 图片文件夹路径
-    images_folder = r"E:\data\subject4\pupil\img"
+    images_folder = r"C:\Users\Owner\Downloads\dataset\imgs"
     # label文件夹路径
-    labels_folder = r"E:\data\subject4\pupil\yolo"
+    labels_folder = r"C:\Users\Owner\Downloads\dataset\yolo"
     # 分的比例
     rate = (8, 1, 1)
 

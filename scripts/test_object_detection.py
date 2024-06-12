@@ -3,7 +3,7 @@ from ultralytics import YOLO
 
 
 if __name__ == '__main__':
-    cap = cv2.VideoCapture(r"E:\data\subject4\pupil\143035.mp4")
+    cap = cv2.VideoCapture(r"E:\data\subject7\pupil\111725.mp4")
 
     model_path = '../model/test.pt'
 

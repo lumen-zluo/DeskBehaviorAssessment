@@ -4,5 +4,5 @@ names:
 - eraser
 - pen
 nc: 4
-train: E:\data\subject4\pupil_depart_v2_random\train\images
-val: E:\data\subject4\pupil_depart_v2_random\val\images
+train: C:\Users\Owner\Downloads\dataset_depart_v2_random\train\images
+val: C:\Users\Owner\Downloads\dataset_depart_v2_random\val\images

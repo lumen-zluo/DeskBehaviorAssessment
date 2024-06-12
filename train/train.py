@@ -4,7 +4,6 @@ import numpy as np
 import torch
 
 from ultralytics import YOLO
-import os
 
 
 # os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'

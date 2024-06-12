@@ -20,7 +20,7 @@ def convert(img_size, box):
 
 def decode_json(json_floder_path, json_name):
 
-    folder = r'E:\data\subject4\pupil\yolo\\'
+    folder = r'C:\Users\Owner\Downloads\dataset\yolo\\'
     os.makedirs(folder,exist_ok=True)
     txt_name = os.path.join(folder,json_name[0:-5] + '.txt')
     txt_file = open(txt_name, 'w')
@@ -57,7 +57,7 @@ def decode_json(json_floder_path, json_name):
             bbox = convert((img_w, img_h), bb)
             txt_file.write(str(name2id[label_name]) + " " + " ".join([str(a) for a in bbox]) + '\n')
 
-        if (i['shape_type'] == 'retangle'):
+        if (i['shape_type'] == 'rectangle'):
             x1 = int(i['points'][0][0])
             y1 = int(i['points'][0][1])
             x2 = int(i['points'][1][0])
@@ -72,7 +72,7 @@ def decode_json(json_floder_path, json_name):
 
 if __name__ == "__main__":
 
-    json_floder_path = r"E:\data\subject4\pupil\labels"
+    json_floder_path = r"C:\Users\Owner\Downloads\dataset\labels"
     json_names = os.listdir(json_floder_path)
     for json_name in json_names:
         decode_json(json_floder_path, json_name)
