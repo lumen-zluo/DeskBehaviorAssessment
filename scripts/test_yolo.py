@@ -47,7 +47,8 @@ def show_image(keypoints):
 
 
 if __name__ == '__main__':
-    cap = cv2.VideoCapture(r"F:\backup\Smart-Vest\data\2\pre\2-pre-S2.mp4")
+    # cap = cv2.VideoCapture(r"F:\backup\Smart-Vest\data\2\pre\2-pre-S2.mp4")
+    cap = cv2.VideoCapture(r"E:\data\subject7\3camera\front\101214.mp4")
 
     model_path = '../model/yolov8n-pose.pt'
 
