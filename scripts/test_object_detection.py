@@ -4,13 +4,13 @@ import pandas as pd
 
 
 if __name__ == '__main__':
-    cap = cv2.VideoCapture(r"E:\data\subject7\pupil\111725.mp4")
+    cap = cv2.VideoCapture(r"E:\data\subject49\pupil\154153.mp4")
 
-    model_path = '../model/test.pt'
+    model_path = '../model/testv3.pt'
 
     model = YOLO(model_path)
 
-    eyetracker_gaze_path = r'E:\data\subject7\pupil\111725.mp4_gaze.txt'
+    eyetracker_gaze_path = r'E:\data\subject49\pupil\154153.mp4_gaze.txt'
     eyetracker_gaze_pd = pd.read_csv(eyetracker_gaze_path, sep=' ', header=None, names=['x', 'y'])
     eyetracker_gaze = eyetracker_gaze_pd.values
     index = 0
