@@ -30,6 +30,10 @@ conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvi
 
 after installation, you can run `python test_cuda.py` to check if you install all the staff above successfully
 
+### Install MMAction2
+
+https://mmaction2.readthedocs.io/zh-cn/latest/get_started/installation.html
+
 ## Project Setup
 
 ```sh

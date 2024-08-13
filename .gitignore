@@ -4,3 +4,4 @@ model
 train/dataset
 train/runs
 train/*.pt
+output
