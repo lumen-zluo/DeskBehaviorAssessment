@@ -5,3 +5,4 @@ train/dataset
 train/runs
 train/*.pt
 output
+scripts/custom_dataset
