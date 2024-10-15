@@ -41,7 +41,7 @@ git submodule update	# 更新子模块
 
 ```sh
 pip install ultralytics
-pip install pyinstaller 
+pip install pyinstaller moviepy
 ```
 
 ### Install MMAction2
