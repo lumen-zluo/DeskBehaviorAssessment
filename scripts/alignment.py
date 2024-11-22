@@ -23,6 +23,22 @@ def get_video_capture(file_path, target_timestamp):
     return cap
 
 
+def get_video_path(file_path, target_timestamp):
+    timestamps = []
+    for filename in os.listdir(file_path):
+        if filename.endswith('.mp4') and not filename.startswith('.'):
+            temp = filename.split('.')[0]
+            temp = int(temp)
+            timestamps.append(temp)
+
+    closest_timestamp = min(timestamps, key=lambda x: abs(x - target_timestamp))
+    filename = str(closest_timestamp) + '.mp4'
+
+    video = os.path.join(file_path, filename)
+
+    return video
+
+
 def get_frame_time(cap):
     # Assuming the video has frame time metadata
     return cap.get(cv2.CAP_PROP_POS_MSEC)

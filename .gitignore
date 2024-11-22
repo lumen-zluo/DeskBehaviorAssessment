@@ -4,5 +4,7 @@ model
 train/dataset
 train/runs
 train/*.pt
-output
+test
 scripts/custom_dataset
+.idea
+output
