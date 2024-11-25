@@ -21,6 +21,14 @@ if __name__ == '__main__':
                 pupil_timestamp = int(pupil_timestamp)
                 break
 
+        if os.path.exists(r"D:\UploadtoA100\{subject}.mp4"):
+            continue
+
+        if pupil_timestamp == 0:
+            print(f"{subject} has no eyetrakcer video")
+            # i found no.47 has no eyetracker video
+            continue
+
         # source_video_path = get_video_path(camera_path, pupil_timestamp)
         source_video_path = os.path.join(pupil_path, f'{pupil_timestamp}.mp4')
 
