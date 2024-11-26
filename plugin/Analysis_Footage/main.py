@@ -20,6 +20,15 @@ def check_file(path):
     GazeName = "1.txt"
     TimeStampName = "time.txt"
 
+    files = os.listdir(path)
+    for file in files:
+        if file.endswith(".mp4_timestamp.txt"):
+            TimeStampName = file
+        if file.endswith(".mp4_gaze.txt"):
+            GazeName = file
+        if file.endswith(".mp4"):
+            EyeVideoName = file
+
     Eye_path = os.path.join(path, EyeVideoName)
     Gaze_path = os.path.join(path, GazeName)
     TimeStamp_path = os.path.join(path, TimeStampName)
@@ -328,15 +337,21 @@ class FootageProcess:
 
 if __name__ == '__main__':
 
-    root_path = r"C:\Users\90335\Desktop\smart writing\eyetracker2"
+    root_path = r"D:DesktopEyetrackerVideo"
 
-    if not check_file(root_path):
-        raise ValueError("该文件夹没有所需要的文件，请检查！")
+    subjects = os.listdir(root_path)
 
-    save_root_path = r"./temp_img"
-    project_name = "smart writing4"
-    save_path = os.path.join(save_root_path, project_name)
+    save_root_path = r"./output"
 
-    footage_process = FootageProcess(root_path)
-    imgs = footage_process.CutFootage(save_path, start_time="2024-10-29 14:16:27.940", end_time = "2024-10-29 14:16:30.940", show=False)
+    for subject in subjects:
+        subject_path = os.path.join(root_path, subject)
+
+        if not check_file(subject_path):
+            raise ValueError("该文件夹没有所需要的文件，请检查！")
+
+        project_name = f"{subject}"
+        save_path = os.path.join(save_root_path, project_name)
+
+        footage_process = FootageProcess(root_path)
+        result = footage_process.CutFootage(save_path)
 
