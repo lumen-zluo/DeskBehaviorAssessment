@@ -3,6 +3,7 @@ from datetime import datetime
 from FuzzyDetection import variance_of_laplacian, gradient_based_blur_detection
 import cv2
 import math
+from ultralytics import YOLO
 import numpy as np
 from DrawTrajectory import DrawImage
 import cv2
@@ -44,11 +45,10 @@ def check_file(path):
 
             return False
 
-    return True
+    return file_list
 
 
 def calculate_fixations(gaze_data, spatial_threshold=20, duration_threshold=100, start_index_offset=0):
-
     fixations = []
     current_fixation = []
     current_fixation_start = 0
@@ -99,7 +99,7 @@ def calculate_fixations(gaze_data, spatial_threshold=20, duration_threshold=100,
 
 class FootageProcess:
 
-    def __init__(self, rootPath):
+    def __init__(self, rootPath, video_name, gaze_name, timestamp_name):
 
         self.save_root_path = None
         self.fixations = None
@@ -107,9 +107,9 @@ class FootageProcess:
         self.start_index = None
         self.whole_timestamp = None  # 储存整个timestamp列表
         self.root_path = rootPath
-        self.video_path = os.path.join(self.root_path, "1.mp4")
-        self.gaze_path = os.path.join(self.root_path, "1.txt")
-        self.time_path = os.path.join(self.root_path, "time.txt")
+        self.video_path = os.path.join(self.root_path, video_name)
+        self.gaze_path = os.path.join(self.root_path, gaze_name)
+        self.time_path = os.path.join(self.root_path, timestamp_name)
         self.gaze_whole_list = []
         self.gaze_footage_list = []
         self.read_timestamp()
@@ -149,7 +149,7 @@ class FootageProcess:
 
         return min_diff_indices[0]
 
-    def CutFootage(self, save_file_path, start_time = None, end_time = None, show = False):
+    def CutFootage(self, save_file_path, start_time=None, end_time=None, show=False):
         self.save_root_path = save_file_path
         time1 = None
         time2 = None
@@ -184,7 +184,7 @@ class FootageProcess:
         imgs = []
         current_img = []  # 当前场景的图像和注视点
         current_fixation = []  # 当前场景的图像和注视点
-        duration_list =[]
+        duration_list = []
         for index, fixation in enumerate(self.fixations):
             if not current_img:
                 current_img = [fixation['img']]
@@ -196,7 +196,7 @@ class FootageProcess:
                 img2_gaze_position_x, img2_gaze_position_y = fixation['position']
 
                 new_gaze_x, new_gaze_y, M = compute_homography_and_transform_gaze(img1, img2, (
-                img2_gaze_position_x, img2_gaze_position_y),show=False)
+                    img2_gaze_position_x, img2_gaze_position_y), show=False)
 
                 if M is None or not (0 <= new_gaze_x < img1.shape[1] and 0 <= new_gaze_y < img1.shape[0]):
                     # 场景变化，保存当前结果
@@ -227,7 +227,7 @@ class FootageProcess:
 
         max_fixation_num = self.max_num_duration_whole(imgs)
 
-        self.save_fixation_path(max_fixation_num,imgs)
+        self.save_fixation_path(max_fixation_num, imgs)
 
         self.save_heatmap(imgs)
 
@@ -244,7 +244,6 @@ class FootageProcess:
         os.makedirs(heatmap_path, exist_ok=True)
 
         for index, img_dict in tqdm(enumerate(imgs), total=len(imgs), desc="Saving heatmap"):
-
             HeatMap(img_dict, heatmap_path, f"heatmap {index + 1}.jpg")
 
     def max_num_duration_whole(self, imgs):
@@ -263,13 +262,12 @@ class FootageProcess:
 
         os.makedirs(fixation_path, exist_ok=True)
 
-        for index, img in tqdm(enumerate(imgs),total=len(imgs),desc="Saving fixation path"):
-
+        for index, img in tqdm(enumerate(imgs), total=len(imgs), desc="Saving fixation path"):
             sub_num_fixation = len(img['duration_list'])
 
             Range_list = [5, 5 + 10 * sub_num_fixation / max_fixation_num]
 
-            DrawImage(Range_list, img, fixation_path, f"fixation {index+1}.mp4")
+            DrawImage(Range_list, img, fixation_path, f"fixation {index + 1}.mp4")
 
     def save_ori_fixation_img(self, show, imgs):
 
@@ -280,7 +278,7 @@ class FootageProcess:
         # 显示结果
         num_pic = 1
 
-        for img_dict in tqdm(imgs,total=len(imgs),desc="Saving original img"):
+        for img_dict in tqdm(imgs, total=len(imgs), desc="Saving original img"):
             img_save_path = os.path.join(ori_fixation_img_path, f"fixation {num_pic}.jpg")
             cv2.imwrite(img_save_path, img_dict['img'])
             num_pic += 1
@@ -334,10 +332,110 @@ class FootageProcess:
         cap.release()
         cv2.destroyAllWindows()
 
+    def save_object_detection(self, save_file_path, start_time=None, end_time=None, show=False):
+        self.save_root_path = save_file_path
+        time1 = None
+        time2 = None
+        if start_time is not None and end_time is not None:
+
+            time_format = "%Y-%m-%d %H:%M:%S.%f"
+
+            try:
+                time1 = datetime.strptime(start_time, time_format)
+                time2 = datetime.strptime(end_time, time_format)
+            except ValueError as e:
+                print(f"目标时间格式错误: {e}")
+                exit()
+
+            if time1 > time2:
+                raise ValueError(f"start time为{start_time}, end time为{end_time}, 起始时间大于结束时间！,请检测")
+
+        else:
+
+            time1 = self.whole_timestamp[0]
+            time2 = self.whole_timestamp[-1]
+
+        self.start_index = self.find_best_timestamp(time1)
+        self.end_index = self.find_best_timestamp(time2)
+        print("start index:", self.start_index)
+        print("end index:", self.end_index)
+        self.gaze_footage_list = self.gaze_whole_list[self.start_index:self.end_index + 1]
+        # print(self.gaze_footage_list)
+        self.fixations = calculate_fixations(self.gaze_footage_list, start_index_offset=self.start_index)
+        # print(self.fixations)
+        # self.display_specific_frames()
+
+        # 打开视频文件
+        cap = cv2.VideoCapture(self.video_path)
+
+        # 检查视频是否成功打开
+        if not cap.isOpened():
+            print("Error: Could not open video.")
+            return
+
+        frame_numbers = [i['start_index'] for i in self.fixations]
+        flatten_fixations = []
+        flag = 0
+
+        for index, frame_number in enumerate(frame_numbers):
+            next_start_index = frame_numbers[index + 1] if index + 1 < len(frame_numbers) else 0
+
+            sub_items_count = next_start_index - frame_number
+
+            for _ in range(sub_items_count):
+                flatten_fixations.append(self.fixations[index])
+
+        while True:
+            _, img = cap.read()
+
+            results = model.predict(img)
+
+            result = results[0]
+
+            img = result.plot(boxes=False)
+
+            boxes = result.boxes
+
+            for i, box in enumerate(boxes):
+                cords = box.xyxy[0].tolist()
+                x1, y1, x2, y2 = cords
+                class_id = int(box.cls[0].item())
+                if x1 < flatten_fixations[flag]['position'][0] and y2 > flatten_fixations[flag]['position'][1]:
+                    # show object box
+                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                    if class_id == index_to_pen:
+                        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                        cv2.putText(img, 'pen', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                    elif class_id == index_to_ruler:
+                        cv2.rectangle(img, (x1, y1), (x2, y2), (33, 37, 43), 2)
+                        cv2.putText(img, 'ruler', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (33, 37, 43), 2)
+                    elif class_id == index_to_worksheet:
+                        cv2.rectangle(img, (x1, y1), (x2, y2), (233, 48, 95), 2)
+                        cv2.putText(img, 'worksheet', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (233, 48, 95), 2)
+                    elif class_id == index_to_eraser:
+                        cv2.rectangle(img, (x1, y1), (x2, y2), (95, 173, 101), 2)
+                        cv2.putText(img, 'eraser', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (95, 173, 101), 2)
+
+            cv2.circle(img, (int(flatten_fixations[flag]['position'][0]), int(flatten_fixations[flag]['position'][1])), 10, (95, 48, 233), 4)
+
+            cv2.imshow('img', img)
+
+            flag += 1
+
+            key = cv2.waitKey(1)
+            if key == ord('q'):
+                break
+
+        cv2.destroyAllWindows()
+
+        print("All done!!!!")
+
+        return []
+
 
 if __name__ == '__main__':
 
-    root_path = r"D:DesktopEyetrackerVideo"
+    root_path = r"D:/Data/DesktopBehaviorData"
 
     subjects = os.listdir(root_path)
 
@@ -346,12 +444,25 @@ if __name__ == '__main__':
     for subject in subjects:
         subject_path = os.path.join(root_path, subject)
 
-        if not check_file(subject_path):
+        file_list = check_file(subject_path)
+        video_name = file_list[0]
+        gaze_name = file_list[1]
+        timestamp_name = file_list[2]
+
+        if not file_list:
             raise ValueError("该文件夹没有所需要的文件，请检查！")
 
         project_name = f"{subject}"
         save_path = os.path.join(save_root_path, project_name)
 
-        footage_process = FootageProcess(root_path)
-        result = footage_process.CutFootage(save_path)
+        footage_process = FootageProcess(subject_path, video_name, gaze_name, timestamp_name)
 
+        model_path = '../../model/testv3.pt'
+
+        model = YOLO(model_path)
+        index_to_ruler = 0
+        index_to_worksheet = 1
+        index_to_eraser = 2
+        index_to_pen = 3
+
+        result = footage_process.save_object_detection(save_path)

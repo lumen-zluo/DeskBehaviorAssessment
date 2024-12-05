@@ -1,20 +1,19 @@
 import cv2
 import numpy as np
 
-def compute_homography_and_transform_gaze(img1, img2, gaze_point,show=False):
 
+def compute_homography_and_transform_gaze(img1, img2, gaze_point, show=False):
     orb = cv2.ORB_create()
     kp1, des1 = orb.detectAndCompute(img1, None)
     kp2, des2 = orb.detectAndCompute(img2, None)
 
     # 特征匹配
-    bf = cv2.BFMatcher(cv2.NORM_HAMMING)
-    matches = bf.knnMatch(des1, des2, k=2)
-
-
-    good = []
-
     try:
+        bf = cv2.BFMatcher(cv2.NORM_HAMMING)
+        matches = bf.knnMatch(des1, des2, k=2)
+
+        good = []
+
         for m, n in matches:
             if m.distance < 0.75 * n.distance:
                 good.append(m)
@@ -38,9 +37,7 @@ def compute_homography_and_transform_gaze(img1, img2, gaze_point,show=False):
         except:
             return None, None, None
 
-
-        if show :
-
+        if show:
             print("M", M)
 
             img_matches = cv2.drawMatches(img1, kp1, img2, kp2, good, None,
@@ -56,10 +53,12 @@ def compute_homography_and_transform_gaze(img1, img2, gaze_point,show=False):
     else:
         return None, None, None
 
-if __name__ == '__main__':
 
-    img1 = cv2.imread(r"D:\Bryant_Python\Tools\EyetrackerCore\Analysis_Footage\gaze_recording\732.jpg", cv2.IMREAD_GRAYSCALE)
-    img2 = cv2.imread(r"D:\Bryant_Python\Tools\EyetrackerCore\Analysis_Footage\gaze_recording\863.jpg", cv2.IMREAD_GRAYSCALE)
+if __name__ == '__main__':
+    img1 = cv2.imread(r"D:\Bryant_Python\Tools\EyetrackerCore\Analysis_Footage\gaze_recording\732.jpg",
+                      cv2.IMREAD_GRAYSCALE)
+    img2 = cv2.imread(r"D:\Bryant_Python\Tools\EyetrackerCore\Analysis_Footage\gaze_recording\863.jpg",
+                      cv2.IMREAD_GRAYSCALE)
     gaze_point = [100, 150]  # Example gaze point
 
-    compute_homography_and_transform_gaze(img1, img2, gaze_point,show=True)
+    compute_homography_and_transform_gaze(img1, img2, gaze_point, show=True)
