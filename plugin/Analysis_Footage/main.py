@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from FuzzyDetection import variance_of_laplacian, gradient_based_blur_detection
-import cv2
+import csv
 import math
 from ultralytics import YOLO
 import numpy as np
@@ -367,6 +367,14 @@ class FootageProcess:
 
         # 打开视频文件
         cap = cv2.VideoCapture(self.video_path)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')# 使用 mp4v 編碼
+        os.makedirs(self.save_root_path, exist_ok=True)
+        save_video_path = os.path.join(self.save_root_path, "fixations.mp4")
+        wr = cv2.VideoWriter(save_video_path, fourcc, fps, (frame_width, frame_height))
 
         # 检查视频是否成功打开
         if not cap.isOpened():
@@ -374,6 +382,7 @@ class FootageProcess:
             return
 
         frame_numbers = [i['start_index'] for i in self.fixations]
+        max_frame = max(frame_numbers)
         flatten_fixations = []
         flag = 0
 
@@ -385,49 +394,74 @@ class FootageProcess:
             for _ in range(sub_items_count):
                 flatten_fixations.append(self.fixations[index])
 
-        while True:
-            _, img = cap.read()
+        save_csv_path = os.path.join(self.save_root_path, "fixations.csv")
+        csv_header = ['duration', 'fixation_x', 'fixation_y', 'object']
+        with open(file=save_csv_path, mode="w", newline='') as f:
+            csv_writer = csv.writer(f)
+            csv_writer.writerow(csv_header)
+            makeup_frame = total_frames - len(flatten_fixations)
+            # print(len(flatten_fixations), total_frames)
 
-            results = model.predict(img)
+            while True:
+                ret, img = cap.read()
 
-            result = results[0]
+                results = model.predict(img)
 
-            img = result.plot(boxes=False)
+                result = results[0]
 
-            boxes = result.boxes
+                img = result.plot(boxes=False)
 
-            for i, box in enumerate(boxes):
-                cords = box.xyxy[0].tolist()
-                x1, y1, x2, y2 = cords
-                class_id = int(box.cls[0].item())
-                if x1 < flatten_fixations[flag]['position'][0] and y2 > flatten_fixations[flag]['position'][1]:
-                    # show object box
-                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                    if class_id == index_to_pen:
-                        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                        cv2.putText(img, 'pen', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-                    elif class_id == index_to_ruler:
-                        cv2.rectangle(img, (x1, y1), (x2, y2), (33, 37, 43), 2)
-                        cv2.putText(img, 'ruler', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (33, 37, 43), 2)
-                    elif class_id == index_to_worksheet:
-                        cv2.rectangle(img, (x1, y1), (x2, y2), (233, 48, 95), 2)
-                        cv2.putText(img, 'worksheet', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (233, 48, 95), 2)
-                    elif class_id == index_to_eraser:
-                        cv2.rectangle(img, (x1, y1), (x2, y2), (95, 173, 101), 2)
-                        cv2.putText(img, 'eraser', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (95, 173, 101), 2)
+                boxes = result.boxes
 
-            cv2.circle(img, (int(flatten_fixations[flag]['position'][0]), int(flatten_fixations[flag]['position'][1])), 10, (95, 48, 233), 4)
+                csv_data = [
+                    flatten_fixations[flag]['duration'],
+                    flatten_fixations[flag]['position'][0],
+                    flatten_fixations[flag]['position'][1],
+                    None
+                ]
 
-            cv2.imshow('img', img)
+                for i, box in enumerate(boxes):
+                    cords = box.xyxy[0].tolist()
+                    x1, y1, x2, y2 = cords
+                    class_id = int(box.cls[0].item())
+                    if x1 < flatten_fixations[flag]['position'][0] and y2 > flatten_fixations[flag]['position'][1]:
+                        # show object box
+                        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                        if class_id == index_to_pen:
+                            csv_data[3] = 'pen'
+                            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                            cv2.putText(img, 'pen', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                        elif class_id == index_to_ruler:
+                            csv_data[3] = 'ruler'
+                            cv2.rectangle(img, (x1, y1), (x2, y2), (33, 37, 43), 2)
+                            cv2.putText(img, 'ruler', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (33, 37, 43), 2)
+                        elif class_id == index_to_worksheet:
+                            csv_data[3] = 'worksheet'
+                            cv2.rectangle(img, (x1, y1), (x2, y2), (233, 48, 95), 2)
+                            cv2.putText(img, 'worksheet', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (233, 48, 95), 2)
+                        elif class_id == index_to_eraser:
+                            csv_data[3] = 'eraser'
+                            cv2.rectangle(img, (x1, y1), (x2, y2), (95, 173, 101), 2)
+                            cv2.putText(img, 'eraser', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (95, 173, 101), 2)
 
-            flag += 1
+                cv2.circle(img, (int(flatten_fixations[flag]['position'][0]), int(flatten_fixations[flag]['position'][1])), 10, (95, 48, 233), 4)
 
-            key = cv2.waitKey(1)
-            if key == ord('q'):
-                break
+                # cv2.imshow('img', img)
+                wr.write(img)
+                csv_writer.writerow(csv_data)
 
+                if not flag == len(flatten_fixations) - 1:
+                    flag += 1
+
+                if not ret:
+                    break
+                # key = cv2.waitKey(0)
+                # if key == ord('q'):
+                #     break
+
+        cap.release()
+        wr.release()
         cv2.destroyAllWindows()
-
         print("All done!!!!")
 
         return []
