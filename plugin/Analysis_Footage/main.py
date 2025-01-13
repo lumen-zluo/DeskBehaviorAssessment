@@ -470,6 +470,7 @@ class FootageProcess:
 if __name__ == '__main__':
 
     root_path = r"D:/Data/DesktopBehaviorData"
+    # root_path = r"D:/DesktopEyetrackerData"
 
     subjects = os.listdir(root_path)
 

@@ -65,6 +65,12 @@ pip install -v -e .
 pyinstaller .\main.spec
 ```
 
+### Normal ID
+
+```
+正常小孩：26，27，29，31，38(ASD)，40，45，46，48，58
+```
+
 ### COCO Pose Keypoints index [[Reference](https://mmpose.readthedocs.io/zh-cn/latest/dataset_zoo/2d_body_keypoint.html)]
 
-![https://user-images.githubusercontent.com/100993824/227864552-489d03de-e1b8-4ca2-8ac1-80dd99826cb7.png](https://user-images.githubusercontent.com/100993824/227864552-489d03de-e1b8-4ca2-8ac1-80dd99826cb7.png)
+<img style="width: 250px;" src="https://user-images.githubusercontent.com/100993824/227864552-489d03de-e1b8-4ca2-8ac1-80dd99826cb7.png" alt="https://user-images.githubusercontent.com/100993824/227864552-489d03de-e1b8-4ca2-8ac1-80dd99826cb7.png" />
