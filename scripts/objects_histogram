@@ -2,34 +2,52 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
-base_path = "/Users/gxm/Desktop/desk behavior assessment/plugin/Analysis_Footage/output"
-output_path = "/Users/gxm/Desktop/fixation_histograms"
+# 定义包含所有 subject 文件夹的主目录路径
+base_path = '/Users/gxm/Desktop/desk behavior assessment/plugin/Analysis_Footage/output'
+output_path = '/Users/gxm/Desktop/fixation_histograms'
+
+# 创建输出文件夹
 if not os.path.exists(output_path):
     os.makedirs(output_path)
 
 # 记录所有对象名称以保持一致性
 all_objects = set()
 
-# 遍历获取所有object
-for folder in os.listdir(base_path):
-    folder_path = os.path.join(base_path, folder)
-    fixation_file = os.path.join(folder_path, "fixations_aggregated.csv")
-    if os.path.isfile(fixation_file):
-        data = pd.read_csv(fixation_file)
-        all_objects.update(data['object'].dropna().unique())
+# 第一次遍历：数据聚合并收集objects
+for subject_folder in os.listdir(base_path):
+    subject_path = os.path.join(base_path, subject_folder)
+    fixation_file_path = os.path.join(subject_path, 'fixations.csv')
 
-# 将空值也加入到all_objects，代表 "others"
+    # 检查 fixations.csv 文件是否存在
+    if os.path.exists(fixation_file_path):
+        # 读取 CSV 文件
+        fixation_data = pd.read_csv(fixation_file_path)
+
+        # 聚合数据
+        aggregated_data = fixation_data.drop_duplicates()
+
+        # 保存
+        aggregated_file_path = os.path.join(subject_path, 'fixations_aggregated.csv')
+        aggregated_data.to_csv(aggregated_file_path, index=False)
+
+        print(f"{subject_folder} 的数据已聚合并保存。")
+
+        # 收集objects
+        all_objects.update(aggregated_data['object'].dropna().unique())
+
+# 将空值也加入到 all_objects，代表 "others"
 all_objects.add("others")
 
-# 排序object
+# 排序objects
 all_objects = sorted(all_objects)
 
-# 二次遍历绘制直方图
-for folder in os.listdir(base_path):
-    folder_path = os.path.join(base_path, folder)
-    fixation_file = os.path.join(folder_path, "fixations_aggregated.csv")
+# 第二次遍历：绘制直方图
+for subject_folder in os.listdir(base_path):
+    subject_path = os.path.join(base_path, subject_folder)
+    fixation_file = os.path.join(subject_path, 'fixations_aggregated.csv')
 
     if os.path.isfile(fixation_file):
+        # 读取聚合后的数据
         data = pd.read_csv(fixation_file)
 
         # 替换空值为 "others"
@@ -37,9 +55,11 @@ for folder in os.listdir(base_path):
 
         # 统计每个对象的数量
         counts = data['object'].value_counts().to_dict()
+
+        # 确保所有对象名称都在统计中
         counts = {obj: counts.get(obj, 0) for obj in all_objects}
 
-        # 绘制
+        # 绘制直方图
         plt.figure(figsize=(8, 8)) 
         bars = plt.bar(counts.keys(), counts.values(), color='skyblue', edgecolor='black', width=0.9)
 
@@ -50,12 +70,12 @@ for folder in os.listdir(base_path):
         plt.xticks(rotation=45)
         plt.xlabel("Objects")
         plt.ylabel("Fixation Count")
-        plt.title(f"{folder} - Fixation Count Distribution")
+        plt.title(f"{subject_folder} - Fixation Count Distribution")
 
-        # 保存
-        output_file = os.path.join(output_path, f"{folder}_fixation_histogram.png")
+        # 保存图像
+        output_file = os.path.join(output_path, f"{subject_folder}_fixation_histogram.png")
         plt.tight_layout()
         plt.savefig(output_file)
         plt.close()
 
-print(f"所有直方图已生成并保存到：{output_path}")
+print(f"所有文件已聚合并生成直方图，保存到：{output_path}")
