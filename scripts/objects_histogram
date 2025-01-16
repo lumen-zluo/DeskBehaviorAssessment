@@ -10,7 +10,6 @@ output_path = '/Users/gxm/Desktop/fixation_histograms'
 if not os.path.exists(output_path):
     os.makedirs(output_path)
 
-# 记录所有对象名称以保持一致性
 all_objects = set()
 
 # 第一次遍历：数据聚合并收集objects
@@ -53,10 +52,8 @@ for subject_folder in os.listdir(base_path):
         # 替换空值为 "others"
         data['object'].fillna("others", inplace=True)
 
-        # 统计每个对象的数量
+        # 统计object的数量
         counts = data['object'].value_counts().to_dict()
-
-        # 确保所有对象名称都在统计中
         counts = {obj: counts.get(obj, 0) for obj in all_objects}
 
         # 绘制直方图
