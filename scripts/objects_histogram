@@ -1,0 +1,61 @@
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+
+base_path = "/Users/gxm/Desktop/desk behavior assessment/plugin/Analysis_Footage/output"
+output_path = "/Users/gxm/Desktop/fixation_histograms"
+if not os.path.exists(output_path):
+    os.makedirs(output_path)
+
+# 记录所有对象名称以保持一致性
+all_objects = set()
+
+# 遍历获取所有object
+for folder in os.listdir(base_path):
+    folder_path = os.path.join(base_path, folder)
+    fixation_file = os.path.join(folder_path, "fixations_aggregated.csv")
+    if os.path.isfile(fixation_file):
+        data = pd.read_csv(fixation_file)
+        all_objects.update(data['object'].dropna().unique())
+
+# 将空值也加入到all_objects，代表 "others"
+all_objects.add("others")
+
+# 排序object
+all_objects = sorted(all_objects)
+
+# 二次遍历绘制直方图
+for folder in os.listdir(base_path):
+    folder_path = os.path.join(base_path, folder)
+    fixation_file = os.path.join(folder_path, "fixations_aggregated.csv")
+
+    if os.path.isfile(fixation_file):
+        data = pd.read_csv(fixation_file)
+
+        # 替换空值为 "others"
+        data['object'].fillna("others", inplace=True)
+
+        # 统计每个对象的数量
+        counts = data['object'].value_counts().to_dict()
+        counts = {obj: counts.get(obj, 0) for obj in all_objects}
+
+        # 绘制
+        plt.figure(figsize=(8, 8)) 
+        bars = plt.bar(counts.keys(), counts.values(), color='skyblue', edgecolor='black', width=0.9)
+
+        # 设置柱体样式
+        for bar in bars:
+            bar.set_linewidth(1.5)
+
+        plt.xticks(rotation=45)
+        plt.xlabel("Objects")
+        plt.ylabel("Fixation Count")
+        plt.title(f"{folder} - Fixation Count Distribution")
+
+        # 保存
+        output_file = os.path.join(output_path, f"{folder}_fixation_histogram.png")
+        plt.tight_layout()
+        plt.savefig(output_file)
+        plt.close()
+
+print(f"所有直方图已生成并保存到：{output_path}")
