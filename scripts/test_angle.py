@@ -78,14 +78,16 @@ def extract_coordinates(keypoints, index):
 
 
 if __name__ == '__main__':
-    cap = cv2.VideoCapture(r"F:\backup\Smart-Vest\data\5-51-1\video\5-pre-S1.mp4")
+    # cap = cv2.VideoCapture(r"F:\backup\Smart-Vest\data\5-51-1\video\5-pre-S1.mp4")
+    cap = cv2.VideoCapture(r"D:\Projects\SmartWriting\video production\materials\skeleton.mp4")
     model_path = '../model/yolov8n-pose.pt'
     model = YOLO(model_path)
     Euro_pose_filter = EuroPose()
     frame_count = 0
 
     # CSV文件路径
-    csv_file_path = r"F:\backup\Smart-Vest\data\5-51-1\video\5-angle-pre-S1.csv"
+    # csv_file_path = r"F:\backup\Smart-Vest\data\5-51-1\video\5-angle-pre-S1.csv"
+    csv_file_path = r"D:\Projects\SmartWriting\video production\materials\skeleton.csv"
     with open(csv_file_path, mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(['Frame', *keypoint_combinations_with_names.keys()])
