@@ -11,6 +11,7 @@ from scipy.ndimage import gaussian_filter
 from DrawHeatMap import HeatMap
 from tqdm import tqdm
 from HomographyTransform import compute_homography_and_transform_gaze
+import pandas as pd
 
 
 def check_file(path):
@@ -47,55 +48,98 @@ def check_file(path):
 
     return file_list
 
+def convert_ndarray_to_list(data):
+    if isinstance(data, np.ndarray):
+        return data.tolist()
+    elif isinstance(data, list):
+        return [convert_ndarray_to_list(item) for item in data]
+    elif isinstance(data, dict):
+        return {key: convert_ndarray_to_list(value) for key, value in data.items()}
+    else:
+        return data
 
-def calculate_fixations(gaze_data, spatial_threshold=20, duration_threshold=100, start_index_offset=0):
-    fixations = []
-    current_fixation = []
-    current_fixation_start = 0
 
-    def euclidean_distance(point1, point2):
-        return ((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2) ** 0.5
+def calculate_fixations(gaze_time, gaze_data, spatial_threshold=20, duration_threshold=100, start_index_offset=0):
+        fixations = []
+        current_fixation = []
+        current_fixation_start = 0
 
-    for i, point in enumerate(gaze_data):
-        if not current_fixation:
-            # Start a new fixation
-            current_fixation = [point]
-            current_fixation_start = i
-        else:
-            # Check distance to the last point in the current fixation
-            if euclidean_distance(current_fixation[-1], point) <= spatial_threshold:
-                current_fixation.append(point)
-            else:
-                # Finalize the current fixation
-                duration = (i - current_fixation_start) * (1000 / 60.0)  # Duration in milliseconds
-                if duration >= duration_threshold:
+        def euclidean_distance(point1, point2):
+            return ((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2) ** 0.5
 
-                    fixation_x = sum(p[0] for p in current_fixation) / len(current_fixation)
-                    fixation_y = sum(p[1] for p in current_fixation) / len(current_fixation)
-                    if fixation_x > 0 and fixation_y > 0:
-                        fixations.append({
-                            'position': (int(fixation_x), int(fixation_y)),
-                            'start_index': current_fixation_start + start_index_offset,
-                            'duration': duration
-                        })
-                # Reset for new fixation
+        for i, point in enumerate(gaze_data):
+            if not current_fixation:
+                # Start a new fixation
                 current_fixation = [point]
                 current_fixation_start = i
-    # Final check for the last fixation
-    if current_fixation:
-        duration = (len(gaze_data) - current_fixation_start) * (1000 / 60.0)
-        if duration >= duration_threshold:
-            fixation_x = sum(p[0] for p in current_fixation) / len(current_fixation)
-            fixation_y = sum(p[1] for p in current_fixation) / len(current_fixation)
-            if fixation_x > 0 and fixation_y > 0:
-                fixations.append({
-                    'position': (int(fixation_x), int(fixation_y)),
-                    'start_index': current_fixation_start + start_index_offset,
-                    'duration': duration
-                })
+            else:
+                # Check distance to the last point in the current fixation
+                if euclidean_distance(current_fixation[-1], point) <= spatial_threshold:
+                    current_fixation.append(point)
+                else:
+                    # Finalize the current fixation
+                    duration = (i - current_fixation_start) * (1000 / 60.0)  # Duration in milliseconds
+                    if duration >= duration_threshold:
+                        fixation_x = sum(p[0] for p in current_fixation) / len(current_fixation)
+                        fixation_y = sum(p[1] for p in current_fixation) / len(current_fixation)
+                        if fixation_x > 0 and fixation_y > 0:
+                            fixations.append({
+                                'position': (int(fixation_x), int(fixation_y)),
+                                'start_index': current_fixation_start + start_index_offset,
+                                'started_at': gaze_time[current_fixation_start + start_index_offset],
+                                'duration': duration
+                            })
+                    # Reset for new fixation
+                    current_fixation = [point]
+                    current_fixation_start = i
+        # Final check for the last fixation
+        if current_fixation:
+            duration = (len(gaze_data) - current_fixation_start) * (1000 / 60.0)
+            if duration >= duration_threshold:
+                fixation_x = sum(p[0] for p in current_fixation) / len(current_fixation)
+                fixation_y = sum(p[1] for p in current_fixation) / len(current_fixation)
+                if fixation_x > 0 and fixation_y > 0:
+                    fixations.append({
+                        'position': (int(fixation_x), int(fixation_y)),
+                        'start_index': current_fixation_start + start_index_offset,
+                        'started_at': gaze_time[current_fixation_start + start_index_offset],
+                        'duration': duration
+                    })
 
-    return fixations
+        return fixations
 
+def get_object_of_fixation(fixation):
+    """
+    获取注视点的物体
+    """
+    results = model.predict(fixation['img'])
+
+    result = results[0]
+
+    img = result.plot(boxes=False)
+
+    boxes = result.boxes
+
+    object_name = 'other'
+
+    for i, box in enumerate(boxes):
+        cords = box.xyxy[0].tolist()
+        x1, y1, x2, y2 = cords
+        class_id = int(box.cls[0].item())
+        if x1 < fixation['position'][0] and y2 > fixation['position'][1]:
+            # show object box
+            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+            if class_id == index_to_pen:
+                object_name = 'pen'
+            elif class_id == index_to_ruler:
+                object_name = 'ruler'
+            elif class_id == index_to_worksheet:
+                object_name = 'worksheet'
+            elif class_id == index_to_eraser:
+                object_name = 'eraser'
+
+    return object_name
+    
 
 class FootageProcess:
 
@@ -178,7 +222,8 @@ class FootageProcess:
         print("end index:", self.end_index)
         self.gaze_footage_list = self.gaze_whole_list[self.start_index:self.end_index + 1]
         # print(self.gaze_footage_list)
-        self.fixations = calculate_fixations(self.gaze_footage_list, start_index_offset=self.start_index)
+        self.gaze_time_list = self.whole_timestamp[self.start_index:self.end_index + 1]
+        self.fixations = calculate_fixations(self.gaze_time_list, self.gaze_footage_list, start_index_offset=self.start_index)
         # print(self.fixations)
         self.display_specific_frames()
         imgs = []
@@ -361,7 +406,8 @@ class FootageProcess:
         print("end index:", self.end_index)
         self.gaze_footage_list = self.gaze_whole_list[self.start_index:self.end_index + 1]
         # print(self.gaze_footage_list)
-        self.fixations = calculate_fixations(self.gaze_footage_list, start_index_offset=self.start_index)
+        self.gaze_time_list = self.whole_timestamp[self.start_index:self.end_index + 1]
+        self.fixations = calculate_fixations(self.gaze_time_list, self.gaze_footage_list, start_index_offset=self.start_index)
         # print(self.fixations)
         # self.display_specific_frames()
 
@@ -465,6 +511,114 @@ class FootageProcess:
         print("All done!!!!")
 
         return []
+    
+    
+    def CutFootageWithObject(self, save_file_path, start_time=None, end_time=None, show=False):
+        self.save_root_path = save_file_path
+        time1 = None
+        time2 = None
+        if start_time is not None and end_time is not None:
+
+            time_format = "%Y-%m-%d %H:%M:%S.%f"
+
+            try:
+                time1 = datetime.strptime(start_time, time_format)
+                time2 = datetime.strptime(end_time, time_format)
+            except ValueError as e:
+                print(f"目标时间格式错误: {e}")
+                exit()
+
+            if time1 > time2:
+                raise ValueError(f"start time为{start_time}, end time为{end_time}, 起始时间大于结束时间！,请检测")
+
+        else:
+
+            time1 = self.whole_timestamp[0]
+            time2 = self.whole_timestamp[-1]
+
+        self.start_index = self.find_best_timestamp(time1)
+        self.end_index = self.find_best_timestamp(time2)
+        print("start index:", self.start_index)
+        print("end index:", self.end_index)
+        self.gaze_footage_list = self.gaze_whole_list[self.start_index:self.end_index + 1]
+        # print(self.gaze_footage_list)
+        self.gaze_time_list = self.whole_timestamp[self.start_index:self.end_index + 1]
+        self.fixations = calculate_fixations(self.gaze_time_list, self.gaze_footage_list, start_index_offset=self.start_index)
+        # print(self.fixations)
+        self.display_specific_frames()
+        imgs = []
+        current_img = []  # 当前场景的图像和注视点
+        current_fixation = []  # 当前场景的图像和注视点
+        duration_list = []
+        object_list = []
+        started_list = []
+        scene_id = 0
+        for index, fixation in enumerate(self.fixations):
+            fixation_object = get_object_of_fixation(fixation)
+            if not current_img:
+                current_img = [fixation['img']]
+                current_fixation = [fixation['position']]
+                duration_list = [fixation['duration']]
+                object_list = [fixation_object]
+                started_list = [fixation['started_at']]
+            else:
+                img1 = current_img[0]  # 始终与第一张图像比较
+                img2 = fixation['img']
+                img2_gaze_position_x, img2_gaze_position_y = fixation['position']
+
+                new_gaze_x, new_gaze_y, M = compute_homography_and_transform_gaze(img1, img2, (
+                    img2_gaze_position_x, img2_gaze_position_y), show=False)
+
+                if M is None or not (0 <= new_gaze_x < img1.shape[1] and 0 <= new_gaze_y < img1.shape[0]):
+                    # 场景变化，保存当前结果
+                    scene_id += 1
+                    imgs.append({
+                        'img': current_img[0],
+                        'fixation_position': current_fixation,
+                        'duration_list': duration_list,
+                        'scene_id': scene_id,
+                        'object_list': object_list,
+                        'started_list': started_list
+                    })
+                    # 重置
+                    current_img = [fixation['img']]
+                    current_fixation = [fixation['position']]
+                    duration_list = [fixation['duration']]
+                    object_list = [fixation_object]
+                    started_list = [fixation['started_at']]
+                else:
+                    # 场景相同，累积 gaze 位置
+                    current_img.append(img2)
+                    current_fixation.append((new_gaze_x, new_gaze_y))
+                    duration_list.append(fixation['duration'])
+                    object_list.append(fixation_object)
+                    started_list.append(fixation['started_at'])
+
+        # 保存最后结果
+        if current_img and current_fixation:
+            scene_id += 1
+            imgs.append({
+                'img': current_img[0],
+                'fixation_position': current_fixation,
+                'duration_list': duration_list,
+                'scene_id': scene_id,
+                'object_list': object_list,
+                'started_list': started_list
+            })
+
+        self.save_ori_fixation_img(show=show, imgs=imgs)
+
+        max_fixation_num = self.max_num_duration_whole(imgs)
+
+        self.save_fixation_path(max_fixation_num, imgs)
+
+        self.save_heatmap(imgs)
+
+        cv2.destroyAllWindows()
+
+        print("All done!!!!")
+
+        return imgs
 
 
 if __name__ == '__main__':
@@ -500,4 +654,29 @@ if __name__ == '__main__':
         index_to_eraser = 2
         index_to_pen = 3
 
-        result = footage_process.save_object_detection(save_path)
+        # result = footage_process.save_object_detection(save_path)
+        result = footage_process.CutFootageWithObject(save_path)
+        json_file_name = 'fixations.csv'
+        save_csv_path = os.path.join(save_path, json_file_name)
+
+        csv_header = ['scene_id', 'started_list', 'duration_list', 'fixation_x', 'fixation_y', 'object_list']
+
+        with open(file=save_csv_path, mode="w", newline='') as f:
+            csv_writer = csv.writer(f)
+            csv_writer.writerow(csv_header)
+            for i in result:
+                started_at = [dt.strftime('%Y-%m-%d %H:%M:%S') for dt in i['started_list']]
+                fixation_x = [float(x) for x, y in i['fixation_position']]
+                fixation_y = [float(y) for x, y in i['fixation_position']]
+
+                csv_data = [
+                    i['scene_id'],
+                    started_at,
+                    i['duration_list'],
+                    fixation_x,
+                    fixation_y,
+                    i['object_list'],
+                ]
+                csv_writer.writerow(csv_data)
+
+
