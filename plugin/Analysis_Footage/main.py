@@ -655,6 +655,8 @@ if __name__ == '__main__':
         index_to_pen = 3
 
         # result = footage_process.save_object_detection(save_path)
+        # result = footage_process.CutFootage(save_path)
+
         result = footage_process.CutFootageWithObject(save_path)
         json_file_name = 'fixations.csv'
         save_csv_path = os.path.join(save_path, json_file_name)
@@ -665,7 +667,7 @@ if __name__ == '__main__':
             csv_writer = csv.writer(f)
             csv_writer.writerow(csv_header)
             for i in result:
-                started_at = [dt.strftime('%Y-%m-%d %H:%M:%S') for dt in i['started_list']]
+                started_at = [dt.strftime('%Y-%m-%d %H:%M:%S.%f') for dt in i['started_list']]
                 fixation_x = [float(x) for x, y in i['fixation_position']]
                 fixation_y = [float(y) for x, y in i['fixation_position']]
 
